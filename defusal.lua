@@ -414,4 +414,130 @@ end
 local function Toggle(lbl,desc,page,cfgKey,order,cb)
     local row=N("Frame",{Size=UDim2.new(1,0,0,desc and 50 or 40),BackgroundColor3=T.Surf2,LayoutOrder=order or 0},page)
     Crn(7,row) Str(1,T.Bord,row) Pad(12,12,0,0,row)
-    N("TextLabel",{Size=UDim2.new(1,-56,0,20),Position=UDim2.new(0,0,0,desc and 7 or 1
+    N("TextLabel",{Size=UDim2.new(1,-56,0,20),Position=UDim2.new(0,0,0,desc and 7 or 10),BackgroundTransparency=1,Text=lbl,TextColor3=T.Text,Font=Enum.Font.GothamSemibold,TextSize=12,TextXAlignment=Enum.TextXAlignment.Left},row)
+    if desc then N("TextLabel",{Size=UDim2.new(1,-56,0,16),Position=UDim2.new(0,0,0,27),BackgroundTransparency=1,Text=desc,TextColor3=T.Sub,Font=Enum.Font.Gotham,TextSize=10,TextXAlignment=Enum.TextXAlignment.Left},row) end
+
+    local track=N("Frame",{Size=UDim2.new(0,42,0,22),Position=UDim2.new(1,-42,.5,-11),BackgroundColor3=Cfg[cfgKey] and T.Acc or T.Muted},row) Crn(11,track)
+    local thumb=N("Frame",{Size=UDim2.new(0,18,0,18),Position=Cfg[cfgKey] and UDim2.new(1,-20,.5,-9) or UDim2.new(0,2,.5,-9),BackgroundColor3=T.W},track) Crn(9,thumb)
+    -- thumb shadow glow when on
+    local tStr=Str(2,T.AccLt,thumb,.5)
+
+    local function Refresh()
+        local on=Cfg[cfgKey]
+        Tw(track,.18,{BackgroundColor3=on and T.Acc or T.Muted})
+        Tw(thumb,.18,{Position=on and UDim2.new(1,-20,.5,-9) or UDim2.new(0,2,.5,-9)})
+        tStr.Transparency= on and 0 or 1
+        if on then Tw(row,.18,{BackgroundColor3=T.Surf3}) else Tw(row,.18,{BackgroundColor3=T.Surf2}) end
+    end
+    Refresh()
+
+    N("TextButton",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=""},row).MouseButton1Click:Connect(function()
+        Cfg[cfgKey]=not Cfg[cfgKey] Refresh()
+        MakeNotif(lbl, Cfg[cfgKey] and "Включено" or "Выключено", Cfg[cfgKey] and "success" or "warn")
+        if cb then cb(Cfg[cfgKey]) end
+    end)
+    return row
+end
+
+local function Slider(lbl,page,cfgKey,mn,mx,order,cb,suffix)
+    suffix=suffix or ""
+    local row=N("Frame",{Size=UDim2.new(1,0,0,54),BackgroundColor3=T.Surf2,LayoutOrder=order or 0},page)
+    Crn(7,row) Str(1,T.Bord,row) Pad(12,12,0,0,row)
+    N("TextLabel",{Size=UDim2.new(.7,0,0,20),Position=UDim2.new(0,0,0,8),BackgroundTransparency=1,Text=lbl,TextColor3=T.Text,Font=Enum.Font.GothamSemibold,TextSize=12,TextXAlignment=Enum.TextXAlignment.Left},row)
+    local valL=N("TextLabel",{Size=UDim2.new(.3,0,0,20),Position=UDim2.new(.7,0,0,8),BackgroundTransparency=1,Text=tostring(Cfg[cfgKey])..suffix,TextColor3=T.AccLt,Font=Enum.Font.GothamBold,TextSize=12,TextXAlignment=Enum.TextXAlignment.Right},row)
+    local trk=N("Frame",{Size=UDim2.new(1,0,0,6),Position=UDim2.new(0,0,0,38),BackgroundColor3=T.Muted},row) Crn(3,trk)
+    local r0=math.clamp((Cfg[cfgKey]-mn)/(mx-mn),0,1)
+    local fill=N("Frame",{Size=UDim2.new(r0,0,1,0),BackgroundColor3=T.Acc,BorderSizePixel=0},trk) Crn(3,fill)
+    Grad(CS(T.Acc,T.Pink),0,fill)
+    local knob=N("Frame",{Size=UDim2.new(0,16,0,16),Position=UDim2.new(r0,0,.5,-8),AnchorPoint=Vector2.new(.5,0),BackgroundColor3=T.W},trk) Crn(8,knob) Str(2,T.AccLt,knob)
+    local drag=false
+    knob.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true Tw(knob,.1,{Size=UDim2.new(0,20,0,20)}) end end)
+    UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=false Tw(knob,.1,{Size=UDim2.new(0,16,0,16)}) end end)
+    UserInputService.InputChanged:Connect(function(i)
+        if drag and i.UserInputType==Enum.UserInputType.MouseMovement then
+            local rel=math.clamp((i.Position.X-trk.AbsolutePosition.X)/trk.AbsoluteSize.X,0,1)
+            local val=math.round(mn+(mx-mn)*rel)
+            Cfg[cfgKey]=val valL.Text=tostring(val)..suffix
+            fill.Size=UDim2.new(rel,0,1,0) knob.Position=UDim2.new(rel,0,.5,-8)
+            if cb then cb(val) end
+        end
+    end)
+    return row
+end
+
+local function Separator(page,order)
+    N("Frame",{Size=UDim2.new(1,0,0,1),BackgroundColor3=T.Bord,BorderSizePixel=0,LayoutOrder=order or 0},page)
+end
+
+-- ─── POPULATE PAGES ──────────────────────────
+
+-- AIMBOT
+local AimPg, AimAct = MkTab("Аимбот","🎯",1)
+Section("Основное",    AimPg,1)
+Toggle("Аимбот",           "Q — зажать для прицела",AimPg,"Aimbot",2)
+Toggle("Silent Aim",       "Незаметный выстрел",    AimPg,"SilentAim",3)
+Toggle("Team Check",       "Пропускать союзников",  AimPg,"TeamCheck",4)
+Toggle("Показать FOV",     nil,                     AimPg,"ShowFOV",5)
+Separator(AimPg,6)
+Section("Точность",    AimPg,7)
+Slider("FOV",          AimPg,"FOV",      40,400,8,nil," px")
+Slider("Плавность",    AimPg,"Smooth",   1,20, 9, function(v) Cfg.Smooth=v/100 end,"")
+Slider("Предсказание", AimPg,"Prediction",0,30,10,function(v) Cfg.Prediction=v/100 end,"")
+
+-- ESP
+local EspPg, EspAct = MkTab("Визуал","👁",2)
+Section("ESP",         EspPg,1)
+Toggle("Включить ESP", nil,                    EspPg,"ESP",      2)
+Toggle("Рамки (Box)",  "Квадрат вокруг врага", EspPg,"BoxESP",   3)
+Toggle("Имена",        nil,                    EspPg,"NameESP",  4)
+Toggle("Полоска HP",   nil,                    EspPg,"HealthBar",5)
+Toggle("Трейсеры",     "Линии к ногам врага",  EspPg,"Tracers",  6)
+Toggle("Дистанция",    nil,                    EspPg,"DistESP",  7)
+
+-- MISC
+local MscPg, MscAct = MkTab("Разное","⚙",3)
+Section("Движение",    MscPg,1)
+Slider("Скорость",     MscPg,"WalkSpeed",16,200,2,function() ApplySpd() end," ws")
+Slider("Высота прыжка",MscPg,"JumpPower",50,400,3,function() ApplySpd() end," jp")
+Separator(MscPg,4)
+Toggle("NoClip",           "Проходить сквозь стены",MscPg,"NoClip",  5,SetNC)
+Toggle("Бесконечный прыжок",nil,                    MscPg,"InfJump", 6,SetIJ)
+
+-- INFO
+local InfoPg, _ = MkTab("Инфо","ℹ",4)
+local card=N("Frame",{Size=UDim2.new(1,0,0,100),BackgroundColor3=T.Surf3,LayoutOrder=1},InfoPg)
+Crn(8,card) Str(1,T.Bord,card) Pad(14,14,14,14,card)
+Grad(CS(T.Surf3,T.Surf2),135,card)
+N("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
+    Text="DEFUSAL HUB v3.0\n\n🎯  Аимбот  —  Q (зажать)\n👁  ESP  —  в настройках\n⌨  Insert  —  скрыть/показать",
+    TextColor3=T.Sub,Font=Enum.Font.Gotham,TextSize=11,
+    TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,TextWrapped=true},card)
+
+-- activate first tab
+AimAct()
+
+-- ─── OPEN ANIMATION ──────────────────────────
+Main.Size=UDim2.new(0,1,0,1)
+Main.Visible=true
+Tw(Main,.45,{Size=UDim2.new(0,560,0,380)},"Back")
+task.delay(.5,function()
+    MakeNotif("DEFUSAL HUB","Загружено успешно!","success")
+end)
+
+-- ─── HOTKEY ──────────────────────────────────
+UserInputService.InputBegan:Connect(function(i,gpe)
+    if gpe then return end
+    if i.KeyCode==Enum.KeyCode.Insert then
+        Main.Visible=not Main.Visible
+        if Main.Visible then Tw(Main,.3,{Size=UDim2.new(0,560,0,380)},"Back") end
+    end
+end)
+
+-- ─── PLAYER EVENTS ───────────────────────────
+Players.PlayerAdded:Connect(MkESP)
+Players.PlayerRemoving:Connect(KillESP)
+for _,p in pairs(Players:GetPlayers()) do MkESP(p) end
+
+-- ─── MAIN LOOP ───────────────────────────────
+RunService.RenderStepped:Connect(function()
+    UpdESP() UpdAim() ApplySpd()
